@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1f6feb"><link rel="apple-touch-icon" href="icon-192.png">
+<title>ระบบบัญชีสต็อกสินค้า</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--tx:#1b2430;--mu:#6b7686;--bd:#e2e7ef;--pr:#1f6feb;--ok:#1a8f4c;--wr:#d9480f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10151c;--card:#19212b;--tx:#e8edf3;--mu:#98a3b3;--bd:#2a3442;--pr:#5b9bff;--ok:#3fb97a;--wr:#ff8a4c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10151c;--card:#19212b;--tx:#e8edf3;--mu:#98a3b3;--bd:#2a3442;--pr:#5b9bff;--ok:#3fb97a;--wr:#ff8a4c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Thai","Sarabun",sans-serif;font-size:15px}
+.w{max-width:960px;margin:0 auto;padding:12px}
+h1{font-size:19px;margin:6px 0}small,.mu{color:var(--mu)}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:10px 0}
+.tabs button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;white-space:nowrap;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.k b{display:block;font-size:20px}
+.sc{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}th{color:var(--mu);font-weight:600;font-size:13px}
+.r{text-align:right}
+input,select{font:inherit;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);width:100%}
+label{font-size:13px;color:var(--mu)}
+.btn{background:var(--pr);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:inherit;cursor:pointer}
+.btn.s{background:var(--bd);color:var(--tx)}
+.low{color:var(--wr);font-weight:600}.in{color:var(--ok)}.out{color:var(--wr)}
+.msg{padding:8px;border-radius:8px;margin-top:8px;background:var(--bg)}
+</style></head><body><div class="w">
+<h1>ระบบบัญชีสต็อกสินค้า <small>(ตัวอย่างระบบ)</small></h1>
+<small>รับ-จ่ายสินค้า · บัตรสต็อก · ต้นทุนถัวเฉลี่ยเคลื่อนที่ · มูลค่าสินค้าคงเหลือ</small>
+<div id="st" class="mu"></div><div class="tabs" id="tabs"></div>
+<div id="v"></div>
+</div>
+<script>
+const CATS=["ระบบปรับอากาศ","ระบบทำความเย็น","ระบบส่งจ่ายไฟฟ้า","เครื่องมือช่าง Milwaukee","เครื่องมือช่าง SKIL"];
+const seed=()=>({items:[
+{c:"AC-001",n:"คอมเพรสเซอร์แอร์ 18,000 BTU",g:CATS[0],u:"ตัว",min:5},
+{c:"RF-001",n:"ท่อทองแดงม้วน 1/4 นิ้ว",g:CATS[1],u:"ม้วน",min:10},
+{c:"EL-001",n:"เบรกเกอร์ 3P 63A",g:CATS[2],u:"ตัว",min:8},
+{c:"MW-001",n:"สว่านไร้สาย Milwaukee M18",g:CATS[3],u:"ชุด",min:4},
+{c:"SK-001",n:"เลื่อยจิ๊กซอว์ SKIL",g:CATS[4],u:"ตัว",min:4}],
+tx:[]});
+let D;try{D=JSON.parse(localStorage.getItem("stk")||"null")}catch(e){}
+if(!D){D=seed();
+[["AC-001","in",20,4200],["RF-001","in",40,950],["EL-001","in",30,780],["MW-001","in",12,6900],["SK-001","in",10,1850],
+["AC-001","out",16,0],["EL-001","out",24,0],["MW-001","out",9,0]].forEach((t,i)=>add(t[0],t[1],t[2],t[3],"2026-11-0"+(i%8+1),i<5?"PO-"+(100+i):"INV-"+(200+i),true))}
+function ini(){D.cfg=D.cfg||{email:"",on:false};D.alerted=D.alerted||{}}
+function save(){try{localStorage.setItem("stk",JSON.stringify(D))}catch(e){}push()}
+function add(code,type,q,cost,date,ref,quiet){const s=calc(code);
+if(type==="out"){if(q>s.q)return "สินค้าไม่พอ (คงเหลือ "+s.q+")";cost=s.avg}
+D.tx.push({code,type,q,cost,date,ref});if(!quiet)save();return""}
+function calc(code,upto){let q=0,v=0,rows=[];
+D.tx.filter(t=>t.code===code).sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
+if(t.type==="in"){q+=t.q;v+=t.q*t.cost}else{v-=t.q*(q?v/q:0);q-=t.q}
+rows.push({...t,bq:q,bv:v,avg:q?v/q:0})});
+return{q,v,avg:q?v/q:0,rows}}
+const f=n=>n.toLocaleString("th-TH",{maximumFractionDigits:2});
+const T={dash:"ภาพรวม",items:"สินค้า",mov:"รับ/จ่าย",card:"บัตรสต็อก",set:"ตั้งค่าแจ้งเตือน"};let cur="dash",sel="AC-001",msg="";
+function nav(){document.getElementById("tabs").innerHTML=Object.keys(T).map(k=>`<button class="${k===cur?"on":""}" onclick="cur='${k}';msg='';draw()">${T[k]}</button>`).join("")}
+function draw(){ini();nav();const v=document.getElementById("v");
+if(cur==="dash"){let tv=0,low=0;const rows=D.items.map(i=>{const s=calc(i.c);tv+=s.v;const l=s.q<=i.min;if(l)low++;
+return`<tr><td>${i.c}</td><td>${i.n}</td><td>${i.g}</td><td class="r ${l?"low":""}">${f(s.q)} ${i.u}</td><td class="r">${f(s.avg)}</td><td class="r">${f(s.v)}</td></tr>`}).join("");
+v.innerHTML=`<div class="g"><div class="card k"><small>มูลค่าสินค้าคงเหลือ</small><b>฿${f(tv)}</b></div><div class="card k"><small>จำนวนรายการ</small><b>${D.items.length}</b></div><div class="card k"><small>ต่ำกว่าจุดสั่งซื้อ</small><b class="${low?"low":""}">${low}</b></div></div>
+<div class="card sc"><table><tr><th>รหัส</th><th>ชื่อสินค้า</th><th>หมวด</th><th class="r">คงเหลือ</th><th class="r">ต้นทุน/หน่วย</th><th class="r">มูลค่า (฿)</th></tr>${rows}</table></div>
+<div class="card"><small>ทำรายงานแยกตามหมวดสินค้า</small><div class="sc"><table><tr><th>หมวด</th><th class="r">มูลค่า (฿)</th></tr>${CATS.map(c=>`<tr><td>${c}</td><td class="r">${f(D.items.filter(i=>i.g===c).reduce((a,i)=>a+calc(i.c).v,0))}</td></tr>`).join("")}</table></div></div>
+<button class="btn s" onclick="if(confirm('รีเซ็ตเป็นข้อมูลตัวอย่าง?')){D=null;try{localStorage.removeItem('stk')}catch(e){}location.reload()}">รีเซ็ตข้อมูลตัวอย่าง</button>`}
+if(cur==="items"){v.innerHTML=`<div class="card"><div class="g"><div><label>รหัส</label><input id="a1"></div><div><label>ชื่อสินค้า</label><input id="a2"></div><div><label>หมวด</label><select id="a3">${CATS.map(c=>`<option>${c}</option>`).join("")}</select></div><div><label>หน่วย</label><input id="a4" value="ชิ้น"></div><div><label>จุดสั่งซื้อขั้นต่ำ</label><input id="a5" type="number" value="5"></div></div><p><button class="btn" onclick="addItem()">เพิ่มสินค้า</button></p><div class="msg" ${msg?"":"hidden"}>${msg}</div></div>
+<div class="card sc"><table><tr><th>รหัส</th><th>ชื่อ</th><th>หมวด</th><th>หน่วย</th><th class="r">ขั้นต่ำ</th></tr>${D.items.map(i=>`<tr><td>${i.c}</td><td>${i.n}</td><td>${i.g}</td><td>${i.u}</td><td class="r">${i.min}</td></tr>`).join("")}</table></div>`}
+if(cur==="mov"){const o=D.items.map(i=>`<option value="${i.c}">${i.c} ${i.n}</option>`).join("");
+v.innerHTML=`<div class="card"><div class="g"><div><label>ประเภท</label><select id="m1" onchange="document.getElementById('cw').style.display=this.value==='in'?'':'none'"><option value="in">รับเข้า</option><option value="out">จ่ายออก</option></select></div><div><label>สินค้า</label><select id="m2">${o}</select></div><div><label>จำนวน</label><input id="m3" type="number" min="1"></div><div id="cw"><label>ต้นทุน/หน่วย (฿)</label><input id="m4" type="number" min="0"></div><div><label>วันที่</label><input id="m5" type="date" value="${new Date().toISOString().slice(0,10)}"></div><div><label>เลขที่เอกสาร</label><input id="m6" placeholder="PO / INV"></div></div><p><button class="btn" onclick="addTx()">บันทึก</button></p><div class="msg" ${msg?"":"hidden"}>${msg}</div><small>การจ่ายออกใช้ต้นทุนถัวเฉลี่ยเคลื่อนที่โดยอัตโนมัติ และไม่อนุญาตให้ติดลบ</small></div>`}
+if(cur==="set"){v.innerHTML=`<div class="card"><b>เชื่อมต่อ Google Sheets / Apps Script</b><p><label>Web App URL</label><input id="c1" value="${CN.url||""}" placeholder="https://script.google.com/macros/s/.../exec"></p><p><label>รหัสลับ (KEY ในสคริปต์)</label><input id="c2" type="password" value="${CN.key||""}"></p><p><label>อีเมลผู้รับแจ้งเตือน</label><input id="s1" type="email" value="${D.cfg.email}" placeholder="name@example.com"></p><p><label><input type="checkbox" id="s2" style="width:auto" ${D.cfg.on?"checked":""}> ส่งอีเมลแจ้งเตือนอัตโนมัติเมื่อสินค้าถึงหรือต่ำกว่าขั้นต่ำ</label></p><button class="btn" onclick="saveConn()">บันทึกและเชื่อมต่อ</button> <button class="btn s" onclick="testMail()">ส่งอีเมลทดสอบ</button><div class="msg" ${msg?"":"hidden"}>${msg}</div><p><small>ข้อมูลซิงค์ไปที่ Google Sheets ทุกครั้งที่บันทึก เซิร์ฟเวอร์ตรวจสต็อกและส่งเมลให้ทันที และตรวจซ้ำทุกวัน 08:00 แม้ไม่ได้เปิดหน้านี้</small></p></div><div class="card sc"><table><tr><th>รหัส</th><th>ชื่อ</th><th class="r">คงเหลือ</th><th>ขั้นต่ำ</th></tr>${D.items.map(i=>{const s=calc(i.c);return`<tr><td>${i.c}</td><td>${i.n}</td><td class="r ${s.q<=i.min?"low":""}">${f(s.q)} ${i.u}</td><td><input type="number" min="0" value="${i.min}" style="width:90px" onchange="setMin('${i.c}',this.value)"></td></tr>`}).join("")}</table></div>`}
+if(cur==="card"){const s=calc(sel);
+v.innerHTML=`<div class="card"><label>เลือกสินค้า</label><select onchange="sel=this.value;draw()">${D.items.map(i=>`<option value="${i.c}" ${i.c===sel?"selected":""}>${i.c} ${i.n}</option>`).join("")}</select></div>
+<div class="card sc"><table><tr><th>วันที่</th><th>เอกสาร</th><th class="r">รับ</th><th class="r">จ่าย</th><th class="r">คงเหลือ</th><th class="r">ต้นทุน/หน่วย</th><th class="r">มูลค่า (฿)</th></tr>${s.rows.map(r=>`<tr><td>${r.date}</td><td>${r.ref}</td><td class="r in">${r.type==="in"?f(r.q):""}</td><td class="r out">${r.type==="out"?f(r.q):""}</td><td class="r">${f(r.bq)}</td><td class="r">${f(r.avg)}</td><td class="r">${f(r.bv)}</td></tr>`).join("")||"<tr><td colspan=7>ยังไม่มีรายการ</td></tr>"}</table></div>`}}
+function addItem(){const c=a1.value.trim(),n=a2.value.trim();if(!c||!n){msg="กรอกรหัสและชื่อสินค้า";return draw()}
+if(D.items.some(i=>i.c===c)){msg="รหัสซ้ำ";return draw()}
+D.items.push({c,n,g:a3.value,u:a4.value||"ชิ้น",min:+a5.value||0});save();msg="เพิ่มสินค้าแล้ว";draw()}
+async function addTx(){const q=+m3.value,t=m1.value;if(!(q>0)){msg="กรอกจำนวนให้ถูกต้อง";return draw()}
+if(t==="in"&&!(+m4.value>=0&&m4.value!=="")){msg="กรอกต้นทุนต่อหน่วย";return draw()}
+const e=add(m2.value,t,q,+m4.value,m5.value,m6.value||"-");msg=e||"บันทึกแล้ว";if(!e){sel=m2.value;}draw()}
+const CN=(()=>{try{return JSON.parse(localStorage.getItem("stkconn")||"{}")}catch(e){return{}}})();
+const setSt=t=>{const e=document.getElementById("st");if(e)e.textContent=t};
+async function api(body){const r=await fetch(CN.url,{method:"POST",body:JSON.stringify({key:CN.key,...body})});return r.json()}
+let pushT;
+function push(){if(!CN.url)return;clearTimeout(pushT);setSt("กำลังซิงค์...");pushT=setTimeout(async()=>{try{const r=await api({a:"save",d:D});setSt(r.ok?"ซิงค์กับ Google Sheets แล้ว"+(r.sent?" · ส่งอีเมลแจ้งเตือน "+r.sent+" รายการ":""):"ผิดพลาด: "+r.err)}catch(e){setSt("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ (ข้อมูลยังอยู่ในเครื่อง)")}},400)}
+async function boot(){draw();if(!CN.url){setSt("โหมดเดโม: ข้อมูลอยู่ในเบราว์เซอร์ (ตั้งค่าเชื่อมต่อได้ที่แท็บตั้งค่า)");return}
+try{const r=await api({a:"load"});if(!r.ok){setSt("ผิดพลาด: "+r.err);return}
+if(r.d.items.length){D=r.d;try{localStorage.setItem("stk",JSON.stringify(D))}catch(e){}setSt("โหลดข้อมูลจาก Google Sheets แล้ว");draw()}else push()}catch(e){setSt("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้")}}
+function saveConn(){const u=c1.value.trim(),k=c2.value,e=s1.value.trim();
+if(e&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){msg="รูปแบบอีเมลไม่ถูกต้อง";return draw()}
+if(!u||!k){msg="กรอก URL และรหัสลับ";return draw()}
+CN.url=u;CN.key=k;try{localStorage.setItem("stkconn",JSON.stringify(CN))}catch(x){}
+D.cfg.email=e;D.cfg.on=s2.checked&&!!e;msg="บันทึกแล้ว กำลังซิงค์";save();draw()}
+async function testMail(){if(!CN.url){msg="เชื่อมต่อเซิร์ฟเวอร์ก่อน";return draw()}
+D.cfg.email=s1.value.trim();msg="กำลังส่ง...";draw();
+try{const a=await api({a:"save",d:D});const r=a.ok?await api({a:"test"}):a;msg=r.ok?"ส่งอีเมลทดสอบแล้ว":"ผิดพลาด: "+r.err}catch(e){msg="เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"}draw()}
+function setMin(c,val){D.items.find(x=>x.c===c).min=Math.max(0,+val||0);msg="อัปเดตขั้นต่ำของ "+c+" แล้ว";save();draw()}
+boot();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script></body></html>
